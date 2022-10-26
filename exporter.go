@@ -33,11 +33,8 @@ func NewPrometheusExporter(config Config) *PrometheusExporter {
 			Name:      "up",
 			Help:      "Was the last scrape of varnish successful.",
 		}),
-		varnishTop: VarnishTop{
-			Binary: "varnishtop",
-			Args:   []string{"-1"},
-		},
-		config: config,
+		varnishTop: NewVarnishTop("varnishtop", "-1"),
+		config:     config,
 	}
 }
 
@@ -50,7 +47,7 @@ func (pe *PrometheusExporter) Collect(ch chan<- prometheus.Metric) {
 	defer pe.Unlock()
 
 	pe.up.Set(1)
-	output, err := pe.collectFromVarnishTop()
+	output, err := pe.runVarnishTop()
 	if err != nil {
 		log.Println(err)
 		pe.up.Set(0)
@@ -60,16 +57,24 @@ func (pe *PrometheusExporter) Collect(ch chan<- prometheus.Metric) {
 	if err != nil {
 		log.Println(err)
 	}
-	for _, gauge := range metrics.Gauges {
-		metricType := prometheus.CountValue
-		name := pe.config.Namespace + "_" + gauge.Name
-		desc := prometheus.NewDesc(name, gauge.Description, nil, nil)
-		ch <- prometheus.MustNewConstMetric(desc, metricType, gauge.Value)
-	}
+
+	ch <- pe.getRespStatusGauge(metrics.RespStatus)
 	ch <- pe.up
 }
 
-func (pe *PrometheusExporter) collectFromVarnishTop() (string, error) {
+func (pe *PrometheusExporter) getRespStatusGauge(metrics *RespStatusMetrics) prometheus.Metric {
+	name := pe.config.Namespace + "_resp_status"
+	description := "Total of good and bad response status code"
+	desc := prometheus.NewDesc(name, description, nil, nil)
+	// desc := prometheus.NewDesc(name, description, []string{"good", "bad"}, nil)
+	metricType := prometheus.CounterValue
+	labels := []string{"good", "bad"}
+	values := []string{fmt.Sprintf("%f", metrics.Good), fmt.Sprintf("%f", metrics.Bad)}
+	gauge := prometheus.MustNewConstMetric(desc, metricType, 0, "good", "bad",  values)
+	return gauge
+}
+
+func (pe *PrometheusExporter) runVarnishTop() (string, error) {
 	varnishTop := pe.varnishTop
 	shell := pe.config.Shell
 	command := varnishTop.Binary + " " + strings.Join(varnishTop.Args, " ")
