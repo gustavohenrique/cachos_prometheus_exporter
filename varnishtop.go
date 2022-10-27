@@ -9,30 +9,6 @@ import (
 	"strings"
 )
 
-type RespStatusMetrics struct {
-	Good float64
-	Bad  float64
-}
-
-type ReqMethodMetrics struct {
-	Post   float64
-	Get    float64
-	Put    float64
-	Delete float64
-	Head   float64
-}
-
-type VclCallMetrics struct {
-	Hit     float64
-	Miss    float64
-	Pass    float64
-	Recv    float64
-	Hash    float64
-	Deliver float64
-	Pipe    float64
-	Synth   float64
-}
-
 type VarnishTopMetrics struct {
 	RespStatus *RespStatusMetrics
 	ReqMethod  *ReqMethodMetrics
@@ -52,11 +28,9 @@ func NewVarnishTop(binary, arg string) VarnishTop {
 }
 
 func (vt *VarnishTop) Parse(report string) (VarnishTopMetrics, error) {
-	var (
-		respStatusMetrics *RespStatusMetrics
-		reqMethodMetrics  *ReqMethodMetrics
-		vclCallMetrics    *VclCallMetrics
-	)
+	respStatusMetrics := &RespStatusMetrics{}
+	reqMethodMetrics := &ReqMethodMetrics{}
+	vclCallMetrics := &VclCallMetrics{}
 	scanner := bufio.NewScanner(strings.NewReader(report))
 	for scanner.Scan() {
 		line := scanner.Text()

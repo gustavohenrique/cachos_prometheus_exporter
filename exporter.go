@@ -58,20 +58,25 @@ func (pe *PrometheusExporter) Collect(ch chan<- prometheus.Metric) {
 		log.Println(err)
 	}
 
-	ch <- pe.getRespStatusGauge(metrics.RespStatus)
+	pe.createPrometheusMetrics(ch, metrics.RespStatus.Counters())
+	pe.createPrometheusMetrics(ch, metrics.ReqMethod.Counters())
+	pe.createPrometheusMetrics(ch, metrics.VclCall.Counters())
 	ch <- pe.up
 }
 
-func (pe *PrometheusExporter) getRespStatusGauge(metrics *RespStatusMetrics) prometheus.Metric {
-	name := pe.config.Namespace + "_resp_status"
-	description := "Total of good and bad response status code"
-	desc := prometheus.NewDesc(name, description, nil, nil)
-	// desc := prometheus.NewDesc(name, description, []string{"good", "bad"}, nil)
-	metricType := prometheus.CounterValue
-	labels := []string{"good", "bad"}
-	values := []string{fmt.Sprintf("%f", metrics.Good), fmt.Sprintf("%f", metrics.Bad)}
-	gauge := prometheus.MustNewConstMetric(desc, metricType, 0, "good", "bad",  values)
-	return gauge
+func (pe *PrometheusExporter) createPrometheusMetrics(ch chan<- prometheus.Metric, counters []Counter) {
+	for _, counter := range counters {
+		ch <- prometheus.MustNewConstMetric(
+			prometheus.NewDesc(
+				pe.config.Namespace+"_"+counter.Name,
+				counter.Description,
+				nil,
+				nil,
+			),
+			prometheus.CounterValue,
+			counter.Value,
+		)
+	}
 }
 
 func (pe *PrometheusExporter) runVarnishTop() (string, error) {

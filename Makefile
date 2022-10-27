@@ -7,14 +7,14 @@ install:
 	$(go) mod tidy
 
 run:
-	$(go) run .
+	@$(go) run .
 
 test: tests
 tests:
-	$(go) test -v -failfast ./...
+	@$(go) test -v -failfast ./...
 
 build:
-	$(go) build -buildvcs=false
+	@$(go) build -buildvcs=false -o cachos_prometheus_exporter
 
 lint:
 	@goimports -w .

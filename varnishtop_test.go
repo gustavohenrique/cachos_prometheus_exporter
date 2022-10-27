@@ -6,7 +6,8 @@ import (
 	"exporter/test/assert"
 )
 
-var report = `
+func TestParse(t *testing.T) {
+	var report = `
  19588.00 VCL_return deliver
  10640.00 VCL_call HIT
   9810.00 VCL_use boot
@@ -56,8 +57,32 @@ var report = `
     11.00 ReqMethod GET
     10.00 ReqURL /login.php?email=me@gmail.com
     10.00 VCL_call PASS
+     1.00 ReqMethod HEAD
+     1.00 ReqMethod DELETE
+     1.00 ReqMethod PUT
      9.00 ReqURL /?s=some%20%search
 `
+	varnishTop := NewVarnishTop("", "")
+	metrics, err := varnishTop.Parse(report)
+	assert.Nil(t, err)
+	assert.Equal(t, metrics.RespStatus.Good, 9789.0)
+	assert.Equal(t, metrics.RespStatus.Bad, 98.0)
+
+	assert.Equal(t, metrics.ReqMethod.Get, 11.0)
+	assert.Equal(t, metrics.ReqMethod.Post, 10.0)
+	assert.Equal(t, metrics.ReqMethod.Put, 1.0)
+	assert.Equal(t, metrics.ReqMethod.Delete, 1.0)
+	assert.Equal(t, metrics.ReqMethod.Head, 1.0)
+
+	assert.Equal(t, metrics.VclCall.Hit, 10640.0)
+	assert.Equal(t, metrics.VclCall.Miss, 17.0)
+	assert.Equal(t, metrics.VclCall.Pass, 10.0)
+	assert.Equal(t, metrics.VclCall.Recv, 9789.0)
+	assert.Equal(t, metrics.VclCall.Hash, 9789.0)
+	assert.Equal(t, metrics.VclCall.Deliver, 9789.0)
+	assert.Equal(t, metrics.VclCall.Pipe, 0.0)
+	assert.Equal(t, metrics.VclCall.Synth, 0.0)
+}
 
 func TestParseRespStatus(t *testing.T) {
 	varnishTop := NewVarnishTop("", "")
